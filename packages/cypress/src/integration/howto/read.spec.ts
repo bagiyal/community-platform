@@ -1,8 +1,11 @@
 import { v4 as uuid } from 'uuid'
+import { MOCK_DATA } from '../../data'
 
 describe('[How To]', () => {
   const SKIP_TIMEOUT = { timeout: 300 }
-  const totalHowTo = 8
+  const totalHowTo = Object.values(MOCK_DATA.howtos).filter(
+    (howTo) => howTo._deleted === false,
+  ).length
 
   describe('[List how-tos]', () => {
     const howtoSlug = 'make-glass-like-beams'
@@ -93,19 +96,15 @@ describe('[How To]', () => {
             .match(coverFileRegex)
         })
 
-        cy.step('Attachments are opened in new tabs')
-        cy.get(`a[href*="art%20final%201.skp"]`).should(
-          'have.attr',
-          'target',
-          '_blank',
-        )
-        cy.get(`a[href*="art%20final%202.skp"]`).should(
-          'have.attr',
-          'target',
-          '_blank',
-        )
+        cy.step('Download file button should redirect to sign in')
+        cy.get('div[data-tip="Login to download"]')
+          .first()
+          .click()
+          .url()
+          .should('include', 'sign-in')
 
         cy.step('All steps are shown')
+        cy.visit(specificHowtoUrl)
         cy.get('[data-cy^=step_]').should('have.length', 12)
 
         cy.step('All step info is shown')
@@ -137,26 +136,43 @@ describe('[How To]', () => {
         })
         // This fails in firefox due to cross security, simply check url
         // .should(iframe => expect(iframe.contents().find('video')).to.exist)
-        cy.step('Back button at top takes users to /how-to')
-        cy.get('[data-cy="go-back"]:eq(0)')
-          .as('topBackButton')
-          .click()
-          .url()
-          .should('include', '/how-to')
-
         cy.step('Back button at bottom takes users to /how-to')
         cy.visit(specificHowtoUrl)
-        cy.get('[data-cy="go-back"]:eq(1)')
+        cy.get('[data-cy="go-back"]')
           .as('bottomBackButton')
           .click()
           .url()
           .should('include', '/how-to')
       })
 
+      it('[Delete button should not be visible to everyone', () => {
+        cy.step('Delete button should not be visible')
+        cy.get('[data-cy="How-To: delete button"]').should('not.exist')
+      })
+
       it('[Views only visible for beta-testers]', () => {
         cy.visit(specificHowtoUrl)
         cy.step(`ViewsCounter should not be visible`)
         cy.get('[data-cy="ViewsCounter"]').should('not.exist')
+      })
+    })
+
+    describe('[By Authenticated]', () => {
+      it('[Allows opening of attachments]', () => {
+        cy.login('howto_reader@test.com', 'test1234')
+        cy.visit(specificHowtoUrl)
+
+        cy.step('Attachments are opened in new tabs')
+        cy.get(`a[href*="art%20final%201.skp"]`).should(
+          'have.attr',
+          'target',
+          '_blank',
+        )
+        cy.get(`a[href*="art%20final%202.skp"]`).should(
+          'have.attr',
+          'target',
+          '_blank',
+        )
       })
     })
 
@@ -169,7 +185,7 @@ describe('[How To]', () => {
         cy.get('[data-cy="ViewsCounter"]').should('exist')
 
         cy.step('Go back')
-        cy.get('[data-cy="go-back"]:eq(0)').as('topBackButton').click()
+        cy.go('back')
 
         cy.step('Views show on second howto')
         cy.visit('/how-to/make-glass-like-beams')
@@ -177,14 +193,81 @@ describe('[How To]', () => {
       })
     })
 
-    it('[By Owner]', () => {
-      cy.step('Edit button is available to the owner')
-      cy.visit(specificHowtoUrl)
-      cy.login('howto_creator@test.com', 'test1234')
-      cy.get('[data-cy=edit]')
-        .click()
-        .url()
-        .should('include', `${specificHowtoUrl}/edit`)
+    describe('[By Owner]', () => {
+      beforeEach(() => {
+        cy.visit(specificHowtoUrl)
+        cy.login('howto_creator@test.com', 'test1234')
+      })
+
+      it('[Delete button is visible]', () => {
+        cy.step('Delete button should be visible to the author of the how-to')
+
+        cy.get('[data-cy="How-To: delete button"]').should('exist')
+      })
+
+      it('[Edit button is visible]', () => {
+        cy.step('Edit button is available to the owner')
+        cy.get('[data-cy=edit]')
+          .click()
+          .url()
+          .should('include', `${specificHowtoUrl}/edit`)
+      })
+    })
+
+    describe('[By Admin]', () => {
+      beforeEach(() => {
+        cy.login('demo_admin@example.com', 'demo_admin')
+        cy.visit(specificHowtoUrl)
+      })
+
+      it('[Delete button is visible]', () => {
+        cy.step('Delete button should be visible to the author of the article')
+
+        cy.get('[data-cy="How-To: delete button"]').should('exist')
+      })
+    })
+  })
+
+  describe('[Read a soft-deleted How-to]', () => {
+    const deletedHowtoUrl = '/how-to/deleted-how-to'
+    beforeEach(() => {
+      cy.visit(deletedHowtoUrl)
+    })
+
+    describe('[By Everyone]', () => {
+      it('[Marked for deletion message]', () => {
+        cy.step(
+          'There should be a message stating the how-to is marked for deletion',
+        )
+
+        cy.get('[data-cy="how-to-deleted"]').contains('Marked for deletion')
+      })
+    })
+
+    describe('[By Owner]', () => {
+      beforeEach(() => {
+        cy.login('demo_user@example.com', 'demo_user')
+        cy.visit(deletedHowtoUrl)
+      })
+
+      it('[Delete Button is disabled]', () => {
+        cy.step('Delete button should be disabled')
+
+        cy.get('[data-cy="How-To: delete button"]').should('be.disabled')
+      })
+    })
+
+    describe('[By Admin]', () => {
+      beforeEach(() => {
+        cy.login('demo_user@example.com', 'demo_user')
+        cy.visit(deletedHowtoUrl)
+      })
+
+      it('[Delete Button is disabled]', () => {
+        cy.step('Delete button should be disabled')
+
+        cy.get('[data-cy="How-To: delete button"]').should('be.disabled')
+      })
     })
   })
 

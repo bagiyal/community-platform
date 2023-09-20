@@ -16,7 +16,11 @@ import type { IComment, IResearch, UserComment, IUser } from 'src/models'
 import { NotFoundPage } from 'src/pages/NotFound/NotFound'
 import { useResearchStore } from 'src/stores/Research/research.store'
 import type { IUploadedFileMeta } from 'src/stores/storage'
-import { isAllowToEditContent } from 'src/utils/helpers'
+import {
+  isAllowedToDeleteContent,
+  isAllowedToEditContent,
+  getPublicUpdates,
+} from 'src/utils/helpers'
 import { seoTagsUpdate } from 'src/utils/seo'
 import { Box, Flex } from 'theme-ui'
 import ResearchDescription from './ResearchDescription'
@@ -126,7 +130,11 @@ const ResearchArticle = observer((props: IProps) => {
   if (item) {
     const isEditable =
       !!researchStore.activeUser &&
-      isAllowToEditContent(item, researchStore.activeUser)
+      isAllowedToEditContent(item, researchStore.activeUser)
+    const isDeletable =
+      !!researchStore.activeUser &&
+      isAllowedToDeleteContent(item, researchStore.activeUser)
+
     const researchAuthor = {
       userName: item._createdBy,
       countryCode: item.creatorCountry,
@@ -168,6 +176,7 @@ const ResearchArticle = observer((props: IProps) => {
           votedUsefulCount={researchStore.votedUsefulCount}
           loggedInUser={loggedInUser}
           isEditable={isEditable}
+          isDeletable={isDeletable}
           needsModeration={researchStore.needsModeration(item)}
           hasUserVotedUseful={researchStore.userVotedActiveResearchUseful}
           hasUserSubscribed={researchStore.userHasSubscribed}
@@ -182,23 +191,21 @@ const ResearchArticle = observer((props: IProps) => {
         />
         <Box my={16}>
           {item &&
-            item?.updates
-              ?.filter(isUpdateVisible)
-              .map((update, index) => (
-                <ResearchUpdate
-                  update={update}
-                  key={update._id}
-                  updateIndex={index}
-                  isEditable={isEditable}
-                  slug={item.slug}
-                  comments={transformToUserComment(
-                    researchStore.getActiveResearchUpdateComments(index),
-                    loggedInUser,
-                    item,
-                  )}
-                  showComments={areCommentVisible(index)}
-                />
-              ))}
+            getPublicUpdates(item).map((update, index) => (
+              <ResearchUpdate
+                update={update}
+                key={update._id}
+                updateIndex={index}
+                isEditable={isEditable}
+                slug={item.slug}
+                comments={transformToUserComment(
+                  researchStore.formatResearchCommentList(update.comments),
+                  loggedInUser,
+                  item,
+                )}
+                showComments={areCommentVisible(index)}
+              />
+            ))}
         </Box>
         <Box
           sx={{
@@ -243,10 +250,6 @@ const ResearchArticle = observer((props: IProps) => {
   }
 })
 
-const isUpdateVisible = (update: IResearch.UpdateDB) => {
-  return update.status !== 'draft' && update._deleted === false
-}
-
 const transformToUserComment = (
   comments: IComment[],
   loggedInUser: IUser | undefined,
@@ -257,7 +260,7 @@ const transformToUserComment = (
     ...c,
     isEditable:
       c.creatorName === loggedInUser?.userName ||
-      isAllowToEditContent(item, loggedInUser),
+      isAllowedToEditContent(item, loggedInUser),
   }))
 }
 

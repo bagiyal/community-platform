@@ -1,10 +1,12 @@
 import * as React from 'react'
-import type { IUserPP } from 'src/models/userPreciousPlastic.models'
-import type { IPlasticType } from 'src/models'
-
+import { FieldArray } from 'react-final-form-arrays'
 import { Flex, Heading, Box, Text, Grid } from 'theme-ui'
+import { Button } from 'oa-components'
+
+import { CustomCheckbox } from './Fields/CustomCheckbox.field'
 import { FlexSectionContainer } from './elements'
 import { OpeningHoursPicker } from './Fields/OpeningHoursPicker.field'
+import { headings, fields } from 'src/pages/Settings/labels'
 
 import Pet from 'src/assets/images/plastic-types/pet.svg'
 import PP from 'src/assets/images/plastic-types/pp.svg'
@@ -14,12 +16,8 @@ import Ldpe from 'src/assets/images/plastic-types/ldpe.svg'
 import Other from 'src/assets/images/plastic-types/other.svg'
 import Pvc from 'src/assets/images/plastic-types/pvc.svg'
 
-import { FieldArray } from 'react-final-form-arrays'
-import { Button } from 'oa-components'
-import { CustomCheckbox } from './Fields/CustomCheckbox.field'
-// TODO: Remove direct usage of Theme
-import { preciousPlasticTheme } from 'oa-themes'
-const theme = preciousPlasticTheme.styles
+import type { IUserPP } from 'src/models/userPreciousPlastic.models'
+import type { IPlasticType } from 'src/models'
 
 interface IProps {
   formValues: IUserPP
@@ -33,15 +31,17 @@ export class CollectionSection extends React.Component<IProps> {
 
   render() {
     const { required } = this.props
+    const { description, title } = fields.openingHours
+
     return (
       <FlexSectionContainer>
         <Flex sx={{ justifyContent: 'space-between' }}>
-          <Heading variant="small">Collection</Heading>
+          <Heading variant="small">{headings.collection}</Heading>
         </Flex>
         <Box>
           <Flex sx={{ wrap: 'nowrap', alignItems: 'center', width: '100%' }}>
             <Text mt={4} mb={4}>
-              Opening time *
+              {`${title} *`}
             </Text>
           </Flex>
           <FieldArray name="openingHours">
@@ -69,14 +69,14 @@ export class CollectionSection extends React.Component<IProps> {
                     })
                   }}
                 >
-                  add opening day
+                  {description}
                 </Button>
               </>
             )}
           </FieldArray>
           <Box>
             <Text mt={4} mb={4}>
-              Plastic types accepted *
+              {`${fields.plastic.title}`} *
             </Text>
             <Grid
               columns={['repeat(auto-fill, minmax(100px, 1fr))']}
@@ -123,14 +123,14 @@ export class CollectionSection extends React.Component<IProps> {
             </Grid>
             {required && (
               <Text
-                color={theme.colors.error}
                 sx={{
                   fontSize: 0.5,
                   marginLeft: 1,
                   marginRight: 1,
+                  color: 'error',
                 }}
               >
-                Choose at least one plastic type{' '}
+                {fields.plastic.description}
               </Text>
             )}
           </Box>

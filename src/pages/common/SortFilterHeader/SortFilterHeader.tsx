@@ -1,10 +1,16 @@
 import { useHistory } from 'react-router'
 import type { RouteComponentProps } from 'react-router'
-import { FieldContainer } from 'src/common/Form/FieldContainer'
-import { CategoriesSelect } from 'src/pages/Howto/Category/CategoriesSelect'
 import { Flex, Input } from 'theme-ui'
 import { useState } from 'react'
 import { Select } from 'oa-components'
+
+import { FieldContainer } from 'src/common/Form/FieldContainer'
+import { CategoriesSelect } from 'src/pages/Howto/Category/CategoriesSelect'
+
+import type { HowtoStore } from 'src/stores/Howto/howto.store'
+import type { ResearchStore } from 'src/stores/Research/research.store'
+
+import { capitalizeFirstLetter } from 'src/utils/helpers'
 
 const updateQueryParams = (
   url: string,
@@ -28,20 +34,33 @@ const updateQueryParams = (
     search,
   })
 }
-export const SortFilterHeader = (props) => {
-  const currentStore = props.store
-  const type = props.type
+
+interface SortFilterHeaderProps {
+  store: HowtoStore | ResearchStore
+  type: 'how-to' | 'research'
+}
+
+export const SortFilterHeader = ({
+  type,
+  store: currentStore,
+}: SortFilterHeaderProps) => {
   const history = useHistory()
 
-  const sortingOptions = currentStore.availableItemSortingOption?.map(
-    (label) => ({
-      label: label.replace(/([a-z])([A-Z])/g, '$1 $2'),
-      value: label,
-    }),
-  )
+  const { searchValue, activeSorter, availableItemSortingOption } = currentStore
 
-  const [sortState, setSortState] = useState('')
-  const { searchValue } = currentStore
+  const sortingOptions = availableItemSortingOption?.map((label) => ({
+    label: label.replace(/([a-z])([A-Z])/g, '$1 $2'),
+    value: label,
+  }))
+
+  const defaultSortingOption =
+    Array.isArray(sortingOptions) && sortingOptions.length > 0
+      ? sortingOptions.find(
+          (sortingOption) => sortingOption.value == activeSorter,
+        ) ?? sortingOptions[0]
+      : ''
+
+  const [sortState, setSortState] = useState(defaultSortingOption)
 
   const _inputStyle = {
     width: ['100%', '100%', '240px'],
@@ -86,7 +105,7 @@ export const SortFilterHeader = (props) => {
             placeholder="Sort by"
             value={sortState}
             onChange={(sortBy) => {
-              currentStore.updateActiveSorter(String(sortBy.value))
+              currentStore.updateActiveSorter(sortBy.value)
               setSortState(sortBy)
             }}
           />
@@ -97,9 +116,7 @@ export const SortFilterHeader = (props) => {
           variant="inputOutline"
           data-cy={`${type}-search-box`}
           value={searchValue}
-          placeholder={`Search for a ${(
-            type.charAt(0).toUpperCase() + type.slice(1)
-          ).split('-')}`}
+          placeholder={`Search for a ${capitalizeFirstLetter(type)}`}
           onChange={(evt) => {
             const value = evt.target.value
             updateQueryParams(window.location.href, 'search', value, history)

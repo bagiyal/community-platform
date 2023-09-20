@@ -1,7 +1,9 @@
 import { isObservableObject, toJS } from 'mobx'
+import type { IResearch } from 'src/models'
 import type { DBDoc, IModerable } from 'src/models/common.models'
 import type { IMapPin } from 'src/models/maps.models'
 import type { IUser } from 'src/models/user.models'
+import type { IItem } from 'src/stores/common/FilterSorterDecorator/FilterSorterDecorator'
 
 // remove special characters from string, also replacing spaces with dashes
 export const stripSpecialCharacters = (text: string) => {
@@ -103,7 +105,7 @@ export const needsModeration = (doc: IModerable, user?: IUser) => {
   return doc.moderation !== 'accepted'
 }
 
-export const isAllowToEditContent = (
+export const isAllowedToEditContent = (
   doc: IEditableDoc & { collaborators?: string[] },
   user?: IUser,
 ) => {
@@ -128,7 +130,26 @@ export const isAllowToEditContent = (
   }
 }
 
-export const isAllowToPin = (pin: IMapPin, user?: IUser) => {
+export const isAllowedToDeleteContent = (doc: IEditableDoc, user?: IUser) => {
+  if (!user) {
+    return false
+  }
+
+  if (isObservableObject(user)) {
+    user = toJS(user)
+  }
+
+  const roles =
+    user.userRoles && Array.isArray(user.userRoles) ? user.userRoles : []
+
+  return (
+    roles.includes('admin') ||
+    roles.includes('super-admin') ||
+    doc._createdBy! === user.userName
+  )
+}
+
+export const isAllowedToPin = (pin: IMapPin, user?: IUser) => {
   if (hasAdminRights(user) || (pin._id && user && pin._id === user.userName)) {
     return true
   } else {
@@ -136,13 +157,36 @@ export const isAllowToPin = (pin: IMapPin, user?: IUser) => {
   }
 }
 
+export const calculateTotalComments = (item: IResearch.ItemDB | IItem) => {
+  if (item.updates) {
+    const commentOnUpdates = item.updates.reduce((totalComments, update) => {
+      const updateCommentsLength =
+        !update._deleted && update.status !== 'draft' && update.comments
+          ? update.comments.length
+          : 0
+      return totalComments + updateCommentsLength
+    }, 0)
+
+    return commentOnUpdates ? String(commentOnUpdates) : '0'
+  } else {
+    return '0'
+  }
+}
+
+export const getPublicUpdates = (item: IResearch.ItemDB) => {
+  if (item.updates) {
+    return item.updates.filter(
+      (update) => update.status !== 'draft' && !update._deleted,
+    )
+  } else {
+    return []
+  }
+}
+
 // ensure docs passed to edit check contain _createdBy field
 export interface IEditableDoc extends DBDoc {
   _createdBy: string
 }
-
-// Convert theme em string to px number
-export const emStringToPx = (width) => Number(width.replace('em', '')) * 16
 
 export const randomIntFromInterval = (min, max) =>
   Math.floor(Math.random() * (max - min + 1) + min)

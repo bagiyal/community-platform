@@ -22,6 +22,14 @@ export const FactoryHowto = (
   ]),
   title: faker.lorem.words(4),
   description: faker.lorem.paragraph(),
+  category: {
+    label: 'howto',
+    _id: faker.datatype.uuid(),
+    _modified: faker.date.past().toString(),
+    _created: faker.date.past().toString(),
+    _deleted: faker.datatype.boolean(),
+    _contentModifiedTimestamp: faker.date.past().toString(),
+  },
   _id: faker.datatype.uuid(),
   _modified: faker.date.past().toString(),
   _created: faker.date.past().toString(),
@@ -63,4 +71,25 @@ export const FactoryHowtoStep = (
   title: faker.lorem.text(),
   text: faker.lorem.paragraphs(2),
   ...howtoStepOverloads,
+})
+
+export const FactoryHowtoDraft = (
+  howtoOverloads: Partial<IHowtoDB> = {},
+): IHowtoDB => ({
+  _id: faker.datatype.uuid(),
+  _contentModifiedTimestamp: faker.date.past().toString(),
+  _created: faker.date.past().toString(),
+  _createdBy: faker.internet.userName(),
+  _deleted: false,
+  _modified: faker.date.past().toString(),
+  files: [],
+  slug: 'quick-draft',
+  moderation: 'draft',
+  mentions: [],
+  title: 'Quick draft',
+  steps: [],
+  previousSlugs: [],
+  tags: {},
+  total_downloads: 0,
+  ...howtoOverloads,
 })

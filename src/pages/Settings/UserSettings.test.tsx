@@ -1,4 +1,4 @@
-import { render, waitFor, screen } from '@testing-library/react'
+import { render, act } from '@testing-library/react'
 import { Provider } from 'mobx-react'
 import { UserSettings } from './UserSettings'
 import { useCommonStores } from 'src'
@@ -49,118 +49,78 @@ describe('UserSettings', () => {
     jest.resetAllMocks()
   })
 
-  it('displays user settings', () => {
+  it('displays user settings', async () => {
     const user = FactoryUser()
 
     // Act
-    const wrapper = getWrapper(user)
+    const wrapper = await getWrapper(user)
 
     // Assert
     expect(wrapper.getByText('Edit profile'))
-    expect(() => wrapper.getByText('Admin settings')).toThrow()
   })
 
-  it('displays admin only settings', async () => {
-    const user = FactoryUser({
-      userRoles: ['admin'],
-    })
-
-    // Act
-    const wrapper = getWrapper(user)
-
-    // Assert
-    await waitFor(() => wrapper.getByText('Admin settings'))
-  })
-
-  it('displays one photo for member', () => {
+  it('displays one photo for member', async () => {
     const user = FactoryUser({ profileType: 'member' })
     // Act
-    const wrapper = getWrapper(user)
+    let wrapper
+    await act(async () => {
+      wrapper = await getWrapper(user)
+    })
     expect(wrapper.getAllByTestId('cover-image')).toHaveLength(1)
   })
 
-  it('displays four photos for collection point', () => {
+  it('displays four photos for collection point', async () => {
     const user = FactoryUser({ profileType: 'collection-point' })
     // Act
-    const wrapper = getWrapper(user)
+    let wrapper
+    await act(async () => {
+      wrapper = await getWrapper(user)
+    })
     expect(wrapper.getAllByTestId('cover-image')).toHaveLength(4)
   })
 
-  it('displays four photos for community builder', () => {
+  it('displays four photos for community builder', async () => {
     const user = FactoryUser({ profileType: 'community-builder' })
     // Act
-    const wrapper = getWrapper(user)
+    let wrapper
+    await act(async () => {
+      wrapper = await getWrapper(user)
+    })
     expect(wrapper.getAllByTestId('cover-image')).toHaveLength(4)
   })
 
-  it('displays four photos for machine builder', () => {
+  it('displays four photos for machine builder', async () => {
     const user = FactoryUser({ profileType: 'machine-builder' })
     // Act
-    const wrapper = getWrapper(user)
+    let wrapper
+    await act(async () => {
+      wrapper = await getWrapper(user)
+    })
     expect(wrapper.getAllByTestId('cover-image')).toHaveLength(4)
   })
 
-  it('displays four photos for space', () => {
+  it('displays four photos for space', async () => {
     const user = FactoryUser({ profileType: 'space' })
     // Act
-    const wrapper = getWrapper(user)
+    let wrapper
+    await act(async () => {
+      wrapper = await getWrapper(user)
+    })
     expect(wrapper.getAllByTestId('cover-image')).toHaveLength(4)
   })
 
-  it('displays four photos for workspace', () => {
+  it('displays four photos for workspace', async () => {
     const user = FactoryUser({ profileType: 'workspace' })
     // Act
-    const wrapper = getWrapper(user)
+    let wrapper
+    await act(async () => {
+      wrapper = await getWrapper(user)
+    })
     expect(wrapper.getAllByTestId('cover-image')).toHaveLength(4)
-  })
-
-  it('presents the state', async () => {
-    const user = FactoryUser({
-      userRoles: ['admin'],
-      badges: {
-        verified: true,
-        supporter: true,
-      },
-    })
-
-    mockGetUserProfile.mockResolvedValue(user)
-
-    // Act
-    const wrapper = getWrapper(user)
-
-    // Assert
-    await waitFor(() => {
-      screen.getByText('Update badges')
-    })
-
-    expect(wrapper.getByLabelText('Verified')).toBeChecked()
-    expect(wrapper.getByLabelText('Supporter')).toBeChecked()
-  })
-
-  it('saves state', async () => {
-    const user = FactoryUser({
-      userRoles: ['admin'],
-    })
-
-    mockGetUserProfile.mockResolvedValue(user)
-
-    // Act
-    const wrapper = getWrapper(user)
-
-    // Assert
-    await waitFor(() => screen.getByText('Update badges').click())
-
-    wrapper.getByLabelText('Verified').click()
-
-    expect(mockUpdateUserBadge).toBeCalledTimes(1)
-    expect(mockUpdateUserBadge).toBeCalledWith(user._id, {
-      supporter: false,
-      verified: true,
-    })
   })
 })
 
-const getWrapper = (user) => {
+const getWrapper = async (user) => {
   const isAdmin = user.userRoles?.includes('admin')
 
   return render(

@@ -345,6 +345,78 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "5niperspider",
+      "name": "Georg Karl",
+      "avatar_url": "https://avatars.githubusercontent.com/u/62932392?v=4",
+      "profile": "https://github.com/5niperspider",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "asdFletcher",
+      "name": "asdFletcher",
+      "avatar_url": "https://avatars.githubusercontent.com/u/42685363?v=4",
+      "profile": "https://www.linkedin.com/in/fletcher-larue/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "bagiyal",
+      "name": "Abhishek Bagiyal",
+      "avatar_url": "https://avatars.githubusercontent.com/u/63339447?v=4",
+      "profile": "https://github.com/bagiyal",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "CrowsVeldt",
+      "name": "Zack",
+      "avatar_url": "https://avatars.githubusercontent.com/u/8883408?v=4",
+      "profile": "https://github.com/CrowsVeldt",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "benkelaar",
+      "name": "Bart Enkelaar",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1822855?v=4",
+      "profile": "https://careers.bol.com/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "laviodias",
+      "name": "Lávio Vale",
+      "avatar_url": "https://avatars.githubusercontent.com/u/44332001?v=4",
+      "profile": "https://github.com/laviodias",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "manuelrurda",
+      "name": "Manuel Rodriguez Urdapilelta",
+      "avatar_url": "https://avatars.githubusercontent.com/u/62727899?v=4",
+      "profile": "https://github.com/manuelrurda",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "LiptonB",
+      "name": "Ben Lipton",
+      "avatar_url": "https://avatars.githubusercontent.com/u/467965?v=4",
+      "profile": "https://github.com/LiptonB",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "projectName": "community-platform",

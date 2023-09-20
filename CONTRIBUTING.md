@@ -43,20 +43,7 @@ With the above tools available, you are ready:
 4. Run the dev server
    `yarn start`
 
-5. Run the end-to-end tests
-   `yarn test`
-
-More information is available in the developer documentation.
-
-### Additional commands
-
-- Run the component documentation
-  `yarn storybook`
-
-We use [Cypress](https://www.cypress.io/) to carry out end-to-end testing. For more information about how to setup, use and add tests refer to the sections in the [Testing Overview](https://onearmy.github.io/community-platform/Testing/overview).
-
-We use [BrowserStack](https://www.browserstack.com/) to test our platform on multiple devices and browsers.
-Note: Builds are currently tested on Chrome/Firefox. If your browser is not supported, then consider contributing.
+More information is available in the [developer documentation](https://docs.platform.onearmy.earth/).
 
 ## 🐛 &nbsp; Issue Tracking and Management
 
@@ -114,7 +101,7 @@ As this is a large project spread across many developers it is important that th
 
 We also expect code to follow standard best practices, such as sensible variable naming, informative comments and avoiding files larger than a couple hundred lines of code (with emphasis on usability and reusability).
 
-Running `yarn format` from the project route prior to committing will ensure the code you're adding is formatted to align with the standards of this project.
+Running `yarn format` from the project root prior to committing will ensure the code you're adding is formatted to align with the standards of this project.
 
 ## 🔬 &nbsp; Commit style guide
 

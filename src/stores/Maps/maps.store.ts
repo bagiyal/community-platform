@@ -6,7 +6,7 @@ import type {
   IMapPinDetail,
   IBoundingBox,
 } from 'src/models/maps.models'
-import type { IDBEndpoint } from 'src/models/common.models'
+import type { IDBEndpoint, IModerationStatus } from 'src/models/common.models'
 import type { RootStore } from '../index'
 import type { Subscription } from 'rxjs'
 import { ModuleStore } from '../common/module.store'
@@ -18,7 +18,7 @@ import type { IUploadedFileMeta } from '../storage'
 import {
   hasAdminRights,
   needsModeration,
-  isAllowToPin,
+  isAllowedToPin,
 } from 'src/utils/helpers'
 import { logger } from 'src/logger'
 import { filterMapPinsByType } from './filter'
@@ -55,11 +55,14 @@ export class MapsStore extends ModuleStore {
     const isAdmin = hasAdminRights(activeUser)
     pins = pins
       .filter((p) => {
+        const isDeleted = p._deleted || false
         const isPinAccepted = p.moderation === 'accepted'
         const wasCreatedByUser = activeUser && p._id === activeUser.userName
         const isAdminAndAccepted = isAdmin && p.moderation !== 'rejected'
         return (
-          p.type && (isPinAccepted || wasCreatedByUser || isAdminAndAccepted)
+          p.type &&
+          !isDeleted &&
+          (isPinAccepted || wasCreatedByUser || isAdminAndAccepted)
         )
       })
       .map((p) => {
@@ -144,41 +147,37 @@ export class MapsStore extends ModuleStore {
   }
 
   // get base pin geo information
-  public async getPin(id: string) {
-    const pin = await this.db.collection<IMapPin>(COLLECTION_NAME).doc(id).get()
+  public async getPin(id: string, source: 'server' | 'cache' = 'cache') {
+    const pin = await this.db
+      .collection<IMapPin>(COLLECTION_NAME)
+      .doc(id)
+      .get(source)
     logger.debug({ pin }, 'MapsStore.getPin')
     return pin as IMapPin
   }
 
-  // add new pin or update existing
-  public async upsertPin(pin: IMapPin) {
-    logger.debug({ pin }, 'MapsStore.upsertPin')
-    // generate standard doc meta
-    if (!isAllowToPin(pin, this.activeUser)) {
-      return false
-    }
-    return this.db.collection(COLLECTION_NAME).doc(pin._id).set(pin)
-  }
-
-  // Moderate Pin
-  public async moderatePin(pin: IMapPin) {
-    if (!hasAdminRights(this.activeUser)) {
-      return false
-    }
-    await this.upsertPin(pin)
-    this.setActivePin(pin)
-  }
   public needsModeration(pin: IMapPin) {
     return needsModeration(pin, this.activeUser)
   }
   public canSeePin(pin: IMapPin) {
-    return pin.moderation === 'accepted' || isAllowToPin(pin, this.activeUser)
+    return pin.moderation === 'accepted' || isAllowedToPin(pin, this.activeUser)
   }
 
   public async setUserPin(user: IUserPP) {
     const type = user.profileType || 'member'
-    // NOTE - if pin previously accepted this will be updated on backend function
-    const moderation = type === 'member' ? 'accepted' : 'awaiting-moderation'
+    const existingPin = await this.getPin(user.userName, 'server')
+    const existingModeration = existingPin?.moderation || 'awaiting-moderation'
+
+    let moderation: IModerationStatus = existingModeration
+
+    if (type === 'member') {
+      moderation = 'accepted'
+    }
+
+    if (type !== 'member' && existingModeration === 'rejected') {
+      moderation = 'awaiting-moderation'
+    }
+
     const pin: IMapPin = {
       _id: user.userName,
       _deleted: !user.location?.latlng,
@@ -187,6 +186,7 @@ export class MapsStore extends ModuleStore {
       moderation,
       verified: user.verified,
     }
+
     if (type !== 'member' && user.workspaceType) {
       pin.subType = user.workspaceType
     }
@@ -237,30 +237,3 @@ export class MapsStore extends ModuleStore {
     return filterMapPinsByType(this.mapPins, filter).length
   }
 }
-
-/**********************************************************************************
- *  Deprecated - CC - 2019/11/04
- *
- * The code below was previously used to help calculate the number of pins currently
- * within view, however not fully implemented. It is retained in case this behaviour
- * is wanted in the future
- *********************************************************************************/
-
-// private recalculatePinCounts(boundingBox: BoundingBox) {
-//   const pinTypeMap = this.availablePinFilters.reduce(
-//     (accumulator, current) => {
-//       current.count = 0
-//       if (accumulator[current.type] === undefined) {
-//         accumulator[current.type] = current
-//       }
-//       return accumulator
-//     },
-//     {} as Record<string, IPinType>,
-//   )
-
-//   this.mapPins.forEach(pin => {
-//     if (insideBoundingBox(pin.location as LatLng, boundingBox)) {
-//       pinTypeMap[pin.type].count++
-//     }
-//   })
-// }

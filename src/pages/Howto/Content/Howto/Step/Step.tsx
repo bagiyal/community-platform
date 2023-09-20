@@ -57,7 +57,7 @@ export default class Step extends PureComponent<IProps> {
                 >
                   <Heading mb={0}>
                     {/* HACK 2021-07-16 - new howtos auto capitalize title but not older */}
-                    {capitalizeFirstLetter(step.title)}
+                    {step.title && capitalizeFirstLetter(step.title)}
                   </Heading>
                   <Box>
                     <Text
@@ -65,12 +65,13 @@ export default class Step extends PureComponent<IProps> {
                       color={'grey'}
                       variant="paragraph"
                       sx={{
+                        wordBreak: 'break-word',
                         whiteSpace: 'pre-line',
                       }}
                     >
                       <LinkifyText>
                         {/* HACK 2021-07-16 - new howtos auto capitalize title but not older */}
-                        {capitalizeFirstLetter(step.text)}
+                        {step.text && capitalizeFirstLetter(step.text)}
                       </LinkifyText>
                     </Text>
                   </Box>

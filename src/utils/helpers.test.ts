@@ -1,4 +1,5 @@
-import type { IModerable } from 'src/models'
+import type { IModerable, IResearch } from 'src/models'
+import type { IItem } from 'src/stores/common/FilterSorterDecorator/FilterSorterDecorator'
 import {
   stripSpecialCharacters,
   formatLowerNoSpecial,
@@ -7,10 +8,12 @@ import {
   filterModerableItems,
   hasAdminRights,
   needsModeration,
-  isAllowToEditContent,
-  isAllowToPin,
+  isAllowedToEditContent,
+  isAllowedToPin,
+  calculateTotalComments,
 } from './helpers'
 import { FactoryUser } from 'src/test/factories/User'
+import { FactoryResearchItemUpdate } from 'src/test/factories/ResearchItem'
 
 describe('src/utils/helpers', () => {
   it('stripSpecialCharacters should remove special characters and replace spaces with dashes', () => {
@@ -113,10 +116,10 @@ describe('src/utils/helpers', () => {
     })
   })
 
-  describe('isAllowToEditContent', () => {
+  describe('isAllowedToEditContent', () => {
     it('should return false when user is not provided', () => {
       const doc = { _createdBy: 'anotherUser', collaborators: [] } as any
-      expect(isAllowToEditContent(doc)).toBe(false)
+      expect(isAllowedToEditContent(doc)).toBe(false)
     })
 
     it('should return true when user is a collaborator', () => {
@@ -125,19 +128,19 @@ describe('src/utils/helpers', () => {
         _createdBy: 'anotherUser',
         collaborators: ['testUser'],
       } as any
-      expect(isAllowToEditContent(doc, user)).toBe(true)
+      expect(isAllowedToEditContent(doc, user)).toBe(true)
     })
 
     it('should return true when user has created the content', () => {
       const user = FactoryUser({ userName: 'testUser', userRoles: [] })
       const doc = { _createdBy: 'testUser', collaborators: [] } as any
-      expect(isAllowToEditContent(doc, user)).toBe(true)
+      expect(isAllowedToEditContent(doc, user)).toBe(true)
     })
 
     it('should return true when user has admin role', () => {
       const user = FactoryUser({ userName: 'testUser', userRoles: ['admin'] })
       const doc = { _createdBy: 'anotherUser', collaborators: [] } as any
-      expect(isAllowToEditContent(doc, user)).toBe(true)
+      expect(isAllowedToEditContent(doc, user)).toBe(true)
     })
 
     it('should return true when user has super-admin role', () => {
@@ -146,26 +149,26 @@ describe('src/utils/helpers', () => {
         userRoles: ['super-admin'],
       })
       const doc = { _createdBy: 'anotherUser', collaborators: [] } as any
-      expect(isAllowToEditContent(doc, user)).toBe(true)
+      expect(isAllowedToEditContent(doc, user)).toBe(true)
     })
 
     it('should return false when user is neither a collaborator, nor the creator, nor an admin', () => {
       const user = FactoryUser({ userName: 'testUser', userRoles: [] })
       const doc = { _createdBy: 'anotherUser', collaborators: [] } as any
-      expect(isAllowToEditContent(doc, user)).toBe(false)
+      expect(isAllowedToEditContent(doc, user)).toBe(false)
     })
   })
 
-  describe('isAllowToPin Function', () => {
+  describe('isAllowedToPin Function', () => {
     it('should return false when user is not provided', () => {
       const pin = { _id: 'pinID' } as any
-      expect(isAllowToPin(pin)).toBe(false)
+      expect(isAllowedToPin(pin)).toBe(false)
     })
 
     it('should return true when user has admin rights', () => {
       const pin = { _id: 'pinID' } as any
       expect(
-        isAllowToPin(
+        isAllowedToPin(
           pin,
           FactoryUser({
             userName: 'testUser',
@@ -178,7 +181,7 @@ describe('src/utils/helpers', () => {
     it('should return true when pin _id matches user userName', () => {
       const pin = { _id: 'testUser' } as any
       expect(
-        isAllowToPin(
+        isAllowedToPin(
           pin,
           FactoryUser({
             userName: 'testUser',
@@ -191,13 +194,72 @@ describe('src/utils/helpers', () => {
     it('should return false when user has no admin rights and pin _id does not match user userName', () => {
       const pin = { _id: 'pinID' } as any
       expect(
-        isAllowToPin(
+        isAllowedToPin(
           pin,
           FactoryUser({
             userRoles: [],
           }),
         ),
       ).toBe(false)
+    })
+  })
+
+  describe('calculateTotalComments Function', () => {
+    it('should return 0 when item has no updates', () => {
+      const item = { item: {} } as any
+      expect(calculateTotalComments(item)).toBe('0')
+    })
+
+    it('should return 0 when updates have no comments', () => {
+      const item = {
+        updates: Array.from({ length: 3 }).fill(
+          FactoryResearchItemUpdate({
+            status: 'published',
+            _deleted: false,
+            comments: [],
+          }),
+        ),
+      } as IResearch.ItemDB | IItem
+      expect(calculateTotalComments(item)).toBe('0')
+    })
+
+    it('should return the correct amount of comments', () => {
+      const item = {
+        updates: Array.from({ length: 3 }).fill(
+          FactoryResearchItemUpdate({
+            status: 'published',
+            _deleted: false,
+            comments: Array.from({ length: 3 }),
+          }),
+        ),
+      } as IResearch.ItemDB | IItem
+      expect(calculateTotalComments(item)).toBe('9')
+    })
+
+    it('should ignore deleted and draft updates', () => {
+      const item = {
+        updates: Array.from({ length: 2 })
+          .fill(
+            FactoryResearchItemUpdate({
+              status: 'published',
+              _deleted: false,
+              comments: Array.from({ length: 2 }),
+            }),
+          )
+          .concat([
+            FactoryResearchItemUpdate({
+              status: 'published',
+              _deleted: true,
+              comments: Array.from({ length: 3 }),
+            }),
+            FactoryResearchItemUpdate({
+              status: 'draft',
+              _deleted: false,
+              comments: Array.from({ length: 6 }),
+            }),
+          ]),
+      } as IResearch.ItemDB | IItem
+      expect(calculateTotalComments(item)).toBe('4')
     })
   })
 })

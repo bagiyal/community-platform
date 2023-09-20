@@ -26,6 +26,7 @@ import {
   changeUserReferenceToPlainText,
 } from '../common/mentions'
 import { ModuleStore } from '../common/module.store'
+import type { RootStore } from '../index'
 import type { DocReference } from '../databaseV2/DocReference'
 import {
   FilterSorterDecorator,
@@ -53,6 +54,9 @@ export class ResearchStore extends ModuleStore {
   @observable
   public searchValue: string
 
+  @observable
+  public activeSorter: ItemSortingOption
+
   public availableItemSortingOption: ItemSortingOption[]
 
   @observable
@@ -66,23 +70,11 @@ export class ResearchStore extends ModuleStore {
   public updateUploadStatus: IUpdateUploadStatus =
     getInitialUpdateUploadStatus()
 
-  constructor() {
-    super(null as any, 'research')
+  constructor(rootStore: RootStore) {
+    super(rootStore, COLLECTION_NAME)
     makeObservable(this)
     super.init()
 
-    this.allDocs$.subscribe((docs: IResearch.ItemDB[]) => {
-      logger.debug('docs', docs)
-      const sortedItems = docs.sort((a, b) =>
-        a._modified < b._modified ? 1 : -1,
-      )
-      runInAction(() => {
-        this.allResearchItems = sortedItems
-        // Create an instance of FilterSorterDecorator with the allResearchItems array
-        this.filterSorterDecorator =
-          new FilterSorterDecorator<IResearch.ItemDB>(this.allResearchItems)
-      })
-    })
     this.selectedCategory = ''
     this.searchValue = ''
     this.availableItemSortingOption = [
@@ -92,10 +84,26 @@ export class ResearchStore extends ModuleStore {
       ItemSortingOption.Comments,
       ItemSortingOption.Updates,
     ]
+
+    this.allDocs$.subscribe((docs: IResearch.ItemDB[]) => {
+      logger.debug('docs', docs)
+      const activeItems = [...docs].filter((doc) => {
+        return !doc._deleted
+      })
+
+      runInAction(() => {
+        this.activeSorter = ItemSortingOption.Modified
+        this.filterSorterDecorator = new FilterSorterDecorator()
+        this.allResearchItems = this.filterSorterDecorator.sort(
+          this.activeSorter,
+          activeItems,
+        )
+      })
+    })
   }
 
-  public updateActiveSorter(query: string) {
-    this.allResearchItems = this.filterSorterDecorator?.sort(query)
+  public updateActiveSorter(sorter: ItemSortingOption) {
+    this.activeSorter = sorter
   }
 
   @computed get filteredResearches() {
@@ -111,14 +119,14 @@ export class ResearchStore extends ModuleStore {
       this.searchValue,
     )
 
-    this.filterSorterDecorator.allItems = validResearches
-
-    return this.filterSorterDecorator.getSortedItems()
+    return this.filterSorterDecorator.sort(
+      this.activeSorter,
+      validResearches,
+      this.activeUser,
+    )
   }
 
-  public getActiveResearchUpdateComments(pointer: number): IComment[] {
-    const comments = this.activeResearchItem?.updates[pointer]?.comments || []
-
+  public formatResearchCommentList(comments: IComment[] = []): IComment[] {
     return comments.map((comment: IComment) => {
       return {
         ...comment,
@@ -280,8 +288,32 @@ export class ResearchStore extends ModuleStore {
     }
   }
 
-  public deleteResearchItem(id: string) {
-    this.db.collection('research').doc(id).delete()
+  @action
+  public async deleteResearch(id: string) {
+    try {
+      const dbRef = this.db.collection<IResearchDB>(COLLECTION_NAME).doc(id)
+      const researchData = await toJS(dbRef.get('server'))
+
+      const user = this.activeUser
+
+      if (id && researchData && user) {
+        await this._updateResearchItem(dbRef, {
+          ...researchData,
+          _deleted: true,
+        })
+
+        if (this.activeResearchItem !== undefined) {
+          this.allResearchItems = this.allResearchItems.filter(
+            (researchItem) => {
+              return researchItem._id !== researchData._id
+            },
+          )
+        }
+      }
+    } catch (err) {
+      logger.error(err)
+      throw new Error(err)
+    }
   }
 
   public async moderateResearch(research: IResearch.ItemDB) {
@@ -580,6 +612,7 @@ export class ResearchStore extends ModuleStore {
         ...values,
         collaborators,
         _createdBy: values._createdBy ? values._createdBy : user.userName,
+        _deleted: false,
         moderation: values.moderation ? values.moderation : 'accepted', // No moderation needed for researches for now
         updates,
         creatorCountry:
@@ -640,6 +673,21 @@ export class ResearchStore extends ModuleStore {
         }
         logger.debug('upload images ok')
         this.updateUpdateUploadStatus('Images')
+
+        if ((update.files && update.files.length) || update.fileLink) {
+          updateWithMeta.downloadCount = 0
+        }
+
+        if (update.files && update.files.length) {
+          const fileMeta = await this.uploadCollectionBatch(
+            update.files as File[],
+            COLLECTION_NAME,
+            id,
+          )
+          updateWithMeta.files = fileMeta
+        }
+        logger.debug('upload files ok')
+        this.updateUpdateUploadStatus('Files')
 
         // populate DB
         const existingUpdateIndex = item.updates.findIndex(
@@ -729,6 +777,48 @@ export class ResearchStore extends ModuleStore {
       } catch (error) {
         logger.error('error deleting article', error)
       }
+    }
+  }
+
+  /**
+   * Increments the download count of files in reasearch update
+   *
+   * @param updateId
+   */
+  public async incrementDownloadCount(updateId: string): Promise<number> {
+    try {
+      let downloadCount = 0
+      const item = this.activeResearchItem
+
+      if (item) {
+        const dbRef = this.db
+          .collection<IResearch.Item>(COLLECTION_NAME)
+          .doc(item._id)
+
+        const newUpdates = item.updates.map((update) => {
+          if (update._id == updateId) {
+            update.downloadCount += 1
+            downloadCount = update.downloadCount
+          }
+          return update
+        })
+
+        const newItem = {
+          ...toJS(item),
+          updates: [...toJS(newUpdates)],
+        }
+
+        const updatedItem = await this._updateResearchItem(dbRef, newItem)
+
+        if (updatedItem) {
+          this.setActiveResearchItemBySlug(updatedItem.slug)
+        }
+      }
+
+      return downloadCount
+    } catch (err) {
+      logger.error(err)
+      throw new Error(err)
     }
   }
 
@@ -837,7 +927,9 @@ export class ResearchStore extends ModuleStore {
         mentions,
         description: researchDescription,
       },
-      { set_last_edit_timestamp: setLastEditTimestamp },
+      {
+        set_last_edit_timestamp: setLastEditTimestamp,
+      },
     )
 
     // Side effects from updating research item
@@ -925,6 +1017,7 @@ interface IResearchUploadStatus {
 export interface IUpdateUploadStatus {
   Start: boolean
   Images: boolean
+  Files: boolean
   Database: boolean
   Complete: boolean
 }
@@ -932,6 +1025,7 @@ export interface IUpdateUploadStatus {
 const getInitialUpdateUploadStatus = (): IUpdateUploadStatus => ({
   Start: false,
   Images: false,
+  Files: false,
   Database: false,
   Complete: false,
 })

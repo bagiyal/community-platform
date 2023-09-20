@@ -8,8 +8,7 @@
     "functions",
     "shared",
     "packages/*",
-    "scripts",
-    "cypress"
+    "scripts"
   ],
   "private": true,
   "main": "lib/index.js",
@@ -143,10 +142,10 @@
     "@semantic-release/git": "^10.0.1",
     "@testing-library/jest-dom": "^5.11.4",
     "@testing-library/react": "^11.1.0",
-    "@testing-library/user-event": "^12.1.10",
+    "@testing-library/user-event": "^14.4.3",
     "@types/browser-image-compression": "^1.0.9",
     "@types/flux-standard-action": "1.1.0",
-    "@types/jest": "^27.4.3",
+    "@types/jest": "^27.4.1",
     "@types/node": "18",
     "@types/pubsub-js": "^1.5.18",
     "@types/react": "17.0.2",
@@ -211,9 +210,14 @@
     "workbox-strategies": "^6.1.5",
     "workbox-streams": "^6.1.5"
   },
+  "dependenciesMeta": {
+    "cypress": {
+      "built": true
+    }
+  },
   "engines": {
     "npm": "please-use-yarn",
-    "node": ">=18.13.0 <19.0.0"
+    "node": ">=18.17.1 <19.0.0"
   },
-  "packageManager": "yarn@3.4.1"
+  "packageManager": "yarn@3.6.3"
 }
